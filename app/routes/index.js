@@ -1,57 +1,40 @@
 'use strict';
 
 var path = process.cwd();
-var ClickHandler = require(path + '/app/controllers/clickHandler.server.js');
+var moment = require('moment');
 
-module.exports = function (app, passport) {
+module.exports = function (app) {
 
-	function isLoggedIn (req, res, next) {
-		if (req.isAuthenticated()) {
-			return next();
-		} else {
-			res.redirect('/login');
-		}
-	}
-
-	var clickHandler = new ClickHandler();
-
+	const util = require('util');
+	
+	var dateObj = {
+		"unix": null,
+		"natural": null
+	};
 	app.route('/')
-		.get(isLoggedIn, function (req, res) {
+		.get(function (req, res) {
 			res.sendFile(path + '/public/index.html');
 		});
-
-	app.route('/login')
+	app.route('/:VALUE')
 		.get(function (req, res) {
-			res.sendFile(path + '/public/login.html');
+			var value = req.params.VALUE;
+			var obj = Object.create(dateObj);
+			var date = new Date(value);
+			var num = parseInt(value) * 1000;
+			var nDate = new Date(num);
+			if (date.toString() === 'Invalid Date' && nDate.toString() === 'Invalid Date') {
+				obj.unix = null;
+				obj.natural = null;
+				res.send(obj).end();
+			} else if(!isNaN(value)) {
+				obj.unix = parseInt(value);
+				obj.natural = moment(nDate).format('MMMM D, YYYY');
+				res.send(obj).end();
+			} else {
+				obj.unix = Date.parse(value) / 1000;
+				obj.natural = moment(date).format('MMMM D, YYYY');
+				res.send(obj).end();
+			}
+			
 		});
-
-	app.route('/logout')
-		.get(function (req, res) {
-			req.logout();
-			res.redirect('/login');
-		});
-
-	app.route('/profile')
-		.get(isLoggedIn, function (req, res) {
-			res.sendFile(path + '/public/profile.html');
-		});
-
-	app.route('/api/:id')
-		.get(isLoggedIn, function (req, res) {
-			res.json(req.user.github);
-		});
-
-	app.route('/auth/github')
-		.get(passport.authenticate('github'));
-
-	app.route('/auth/github/callback')
-		.get(passport.authenticate('github', {
-			successRedirect: '/',
-			failureRedirect: '/login'
-		}));
-
-	app.route('/api/:id/clicks')
-		.get(isLoggedIn, clickHandler.getClicks)
-		.post(isLoggedIn, clickHandler.addClick)
-		.delete(isLoggedIn, clickHandler.resetClicks);
 };
